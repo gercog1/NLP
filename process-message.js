@@ -1,4 +1,5 @@
 const Dialogflow = require('dialogflow');
+const prepend = require('prepend');
 const Pusher = require('pusher');
 const data = require('./data');
 
@@ -62,12 +63,18 @@ const processMessage = message => {
     .then(responses => {
       const result = responses[0].queryResult;
 
-      if (result.intent.displayName === 'film') {
-        const filmGenre = result.parameters.fields['film_genre'].stringValue;
+
+      if (result.intent.displayName === 'sayName' && result.parameters.fields['film'].stringValue && result.parameters.fields['name'].stringValue) {
+        const filmGenre = result.parameters.fields['film'].stringValue;
+        const name = result.parameters.fields['name'].stringValue;
+          prepend('knowledge.pl', `like(${name},${filmGenre}).`, function(error) {
+              if (error)
+                  console.error(error.message);
+          });
 
         if(filmGenre) {
             return pusher.trigger('bot', 'bot-response', {
-                message:`Suggestions for ${filmGenre}:`,
+                message:`Suggestions for ${name}, ${filmGenre}:`,
                 filmData: selectFilm(filmGenre),
             });
         }
