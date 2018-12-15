@@ -1,7 +1,17 @@
 const Dialogflow = require('dialogflow');
+const swipl = require('swipl-stdio');
+
 const prepend = require('prepend');
 const Pusher = require('pusher');
 const data = require('./data');
+
+const engine = new swipl.Engine();
+engine.call(`working_directory(_, '/Users/bohdantverdoukh/Desktop/nlp')`);
+engine.call(`consult('base.pl')`);
+
+const onlyUnique = (value, index, self) => {
+    return self.indexOf(value) === index;
+};
 
 const projectId = 'film-401ba';
 const sessionId = '123456';
@@ -67,10 +77,17 @@ const processMessage = message => {
       if (result.intent.displayName === 'sayName' && result.parameters.fields['film'].stringValue && result.parameters.fields['name'].stringValue) {
         const filmGenre = result.parameters.fields['film'].stringValue;
         const name = result.parameters.fields['name'].stringValue;
-          prepend('knowledge.pl', `like(${name},${filmGenre}).`, function(error) {
-              if (error)
-                  console.error(error.message);
-          });
+
+          (async () => {
+              const result = await engine.call(`assert_fact('${name}','${filmGenre}')`);
+
+              if (result) {
+                  console.log(`Cool`);
+              } else {
+                  console.log('Call failed.');
+              }
+
+          })().catch((err) => console.log(err));
 
         if(filmGenre) {
             return pusher.trigger('bot', 'bot-response', {
@@ -79,6 +96,28 @@ const processMessage = message => {
             });
         }
       }
+
+        if (result.intent.displayName === 'suggestFilmFor') {
+            const name = result.parameters.fields['name'].stringValue;
+            let categories = [];
+
+            (async () => {
+                const query = await engine.createQuery(`fact('${name}', X)`);
+                try {
+                    let result;
+                    while (result = await query.next()) {
+                        categories.push(result.X);
+                    }
+                } finally {
+                    await query.close();
+                    pusher.trigger('bot', 'bot-response', {
+                        message: `Suggested genres for ${name}: ${categories.filter(onlyUnique).join(' ')}`,
+                    });
+                }
+            })().catch((err) => console.log(err));
+
+            return;
+        }
 
         return pusher.trigger('bot', 'bot-response', {
         message: result.fulfillmentText,

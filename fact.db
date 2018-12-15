@@ -1,0 +1,10 @@
+created(1544901207.462591).
+assert(fact('Chris','Horror')).
+assert(fact('Alice','Horror')).
+assert(fact('Chris','Horror')).
+assert(fact('Ben','Fantasy')).
+assert(fact('Chris','Horror')).
+assert(fact('Tom','Fantasy')).
+assert(fact('Tom','Horror')).
+assert(fact('Tom','Horror')).
+assert(fact('Stephan','Horror')).
