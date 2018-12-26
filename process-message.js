@@ -32,30 +32,9 @@ const pusher = new Pusher({
   encrypted: true,
 });
 
-const getRandom = items => items[Math.floor(Math.random()*items.length)];
-
 const sessionClient = new Dialogflow.SessionsClient(config);
 
 const sessionPath = sessionClient.sessionPath(projectId, sessionId);
-
-const selectFilm = filmGenre => {
-    switch (filmGenre) {
-        case 'Horror':
-            return getRandom(data.horrors);
-        case 'Adventures':
-            return getRandom(data.adventures);
-        case 'Fantasy':
-            return getRandom(data.fantasy);
-        default:
-            return {
-                name: 'No name',
-                imgUrl: '',
-                url: '',
-            }
-
-    }
-};
-
 
 const processMessage = message => {
   const request = {
@@ -73,8 +52,9 @@ const processMessage = message => {
     .then(responses => {
       const result = responses[0].queryResult;
 
+      console.log(result.parameters);
 
-      if (result.intent.displayName === 'sayName' && result.parameters.fields['film'].stringValue && result.parameters.fields['name'].stringValue) {
+      if ( result.intent && result.intent.displayName === 'sayName' && result.parameters.fields['film'].stringValue && result.parameters.fields['name'].stringValue) {
         const filmGenre = result.parameters.fields['film'].stringValue;
         const name = result.parameters.fields['name'].stringValue;
 
@@ -89,15 +69,32 @@ const processMessage = message => {
 
           })().catch((err) => console.log(err));
 
-        if(filmGenre) {
             return pusher.trigger('bot', 'bot-response', {
-                message:`Suggestions for ${name}, ${filmGenre}:`,
-                filmData: selectFilm(filmGenre),
+                message: result.fulfillmentText,
             });
-        }
       }
 
-        if (result.intent.displayName === 'suggestFilmFor') {
+        if ( result.intent && result.intent.displayName === 'sayName - yes - custom' && result.parameters.fields['film'].stringValue) {
+            const filmGenre = result.parameters.fields['film'].stringValue;
+            const name = result.parameters.fields['name'].stringValue;
+
+            (async () => {
+                const result = await engine.call(`assert_fact('${name}','${filmGenre}')`);
+
+                if (result) {
+                    console.log(`Cool`);
+                } else {
+                    console.log('Call failed.');
+                }
+
+            })().catch((err) => console.log(err));
+
+            return pusher.trigger('bot', 'bot-response', {
+                message: result.fulfillmentText,
+            });
+        }
+
+        if (result.intent && result.intent.displayName === 'suggestFilmFor') {
             const name = result.parameters.fields['name'].stringValue;
             let categories = [];
 
@@ -110,9 +107,17 @@ const processMessage = message => {
                     }
                 } finally {
                     await query.close();
-                    pusher.trigger('bot', 'bot-response', {
-                        message: `Suggested genres for ${name}: ${categories.filter(onlyUnique).join(' ')}`,
-                    });
+                    if(categories.length > 0) {
+                        pusher.trigger('bot', 'bot-response', {
+                            message: `Suggested genres for ${name}: ${categories.filter(onlyUnique).join(' ')}`,
+                            suggestedGenres: categories.filter(onlyUnique),
+                        });
+
+                    } else {
+                        pusher.trigger('bot', 'bot-response', {
+                            message: `There is no suggestions for ${name}`,
+                        });
+                    }
                 }
             })().catch((err) => console.log(err));
 

@@ -1,6 +1,32 @@
 import React, { Component } from 'react';
 import Pusher from 'pusher-js';
 import './App.css';
+import * as data from './data';
+
+const getRandom = items => items[Math.floor(Math.random()*items.length)];
+
+
+const selectFilm = categories => {
+    let filmData = [];
+    for(let i=0; i< categories.length; i++)
+    {
+        switch (categories[i]) {
+            case 'Horror':
+                filmData = [...filmData, getRandom(data.horrors)];
+                break;
+            case 'Adventures':
+                filmData = [...filmData, getRandom(data.adventures)];
+                break;
+            case 'Fantasy':
+                filmData = [...filmData, getRandom(data.fantasy)];
+                break;
+            default:
+                filmData = [];
+                break;
+        }
+    }
+    return filmData;
+};
 
 class App extends Component {
   constructor(props) {
@@ -22,7 +48,7 @@ class App extends Component {
       const msg = {
         text: data.message,
         user: 'ai',
-          filmData: data.filmData,
+          filmData: data.suggestedGenres && selectFilm(data.suggestedGenres),
       };
       this.setState({
         conversation: [...this.state.conversation, msg],
@@ -61,14 +87,22 @@ class App extends Component {
 
   render() {
       const chat = this.state.conversation.map((e, index) =>
-        <div key={`${e.user}-${index}`} className={`${e.user} chat-bubble`}>
-          <span className="chat-content">{e.text} <br/>
-              { e.filmData && e.user === 'ai' && <a href={e.filmData.url}>
-                  {e.filmData.name}<br/>
-                  <img alt={index} src={e.filmData.imgUrl} />
-                  </a> }
-          </span>
+          <div key={`${e.user}-${index}`}>
+        <div className={`${e.user} chat-bubble`}>
+          <span className="chat-content">{e.text} <br/></span>
         </div>
+      {e.filmData && e.filmData.length > 0 && e.user === 'ai' &&
+      e.filmData.map(item =>
+          <div className={`${e.user} chat-bubble`}>
+            <span className="chat-content">
+               <a href={item.url}>
+                    {item.name}<br/>
+                    <img alt={index} src={item.imgUrl}/>
+                </a>
+            </span>
+      </div>
+      )}
+          </div>
     );
 
 
